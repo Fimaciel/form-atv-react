@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 function FormCadastro() {
   const [nome, setNome] = useState("");
@@ -9,15 +10,19 @@ function FormCadastro() {
   const [celular, setCelular] = useState("");
   const [nomePai, setNomePai] = useState("");
   const [nomeMae, setNomeMae] = useState("");
+
   const [cep, setCep] = useState("");
-  const [endereco, setEndereco] = useState("");
+  const [logradouro, setLogradouro] = useState("");
   const [numero, setNumero] = useState("");
   const [complemento, setComplemento] = useState("");
+  const [bairro, setBairro] = useState("");
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
+
   const [infoMenorVisible, setInfoMenorVisible] = useState(false);
   const [isCpfValido, setIsCpfValido] = useState(true);
   const [isEmailValido, setIsEmailValido] = useState(true);
@@ -26,44 +31,66 @@ function FormCadastro() {
 
   function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, "");
-
     if (cpf.length !== 11) return false;
     if (/(\d)\1{10}/.test(cpf)) return false;
 
     let soma = 0;
     let resto;
-
     for (let i = 1; i <= 9; i++) soma += parseInt(cpf.charAt(i - 1)) * (11 - i);
     resto = (soma * 10) % 11;
-
     if ((resto === 10 || resto === 11) ? 0 : resto !== parseInt(cpf.charAt(9))) return false;
 
     soma = 0;
     for (let i = 1; i <= 10; i++) soma += parseInt(cpf.charAt(i - 1)) * (12 - i);
     resto = (soma * 10) % 11;
-
     return resto === 10 || resto === 11 ? 0 : resto === parseInt(cpf.charAt(10));
   }
+
+  const buscarCep = async () => {
+    try {
+      const cepLimpo = cep.replace(/\D/g, "");
+      if (cepLimpo.length !== 8) {
+        alert("Por favor, insira um CEP válido com 8 dígitos.");
+        return;
+      }
+
+      const response = await axios.get(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+      const data = response.data;
+
+      if (data.erro) {
+        alert("CEP não encontrado.");
+        return;
+      }
+
+      setLogradouro(data.logradouro);
+      setBairro(data.bairro);
+      setCidade(data.localidade);
+      setEstado(data.uf);
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+      alert("Ocorreu um erro ao buscar o CEP.");
+    }
+  };
 
   function validarEmail(email) {
     const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return regex.test(email);
   }
 
-  function DataNascimento(event) {
+  function handleDataNascimento(event) {
     const data = new Date(event.target.value);
     const idade = new Date().getFullYear() - data.getFullYear();
     setDataNascimento(event.target.value);
     setInfoMenorVisible(idade < 18);
   }
 
-  function CpfChange(event) {
+  function handleCpfChange(event) {
     const valorCpf = event.target.value;
     setCpf(valorCpf);
     setIsCpfValido(validarCPF(valorCpf));
   }
 
-  function Email(event) {
+  function handleEmail(event) {
     const valorEmail = event.target.value;
     setEmail(valorEmail);
     setIsEmailValido(validarEmail(valorEmail));
@@ -75,9 +102,10 @@ function FormCadastro() {
     setIsSenhaValida(valorSenha.length >= 8);
   }
 
-  function ConfirmarSenha(event) {
-    setConfirmarSenha(event.target.value);
-    setIsSenhaConfirmada(event.target.value === senha);
+  function handleConfirmarSenha(event) {
+    const valorConfirmarSenha = event.target.value;
+    setConfirmarSenha(valorConfirmarSenha);
+    setIsSenhaConfirmada(valorConfirmarSenha === senha);
   }
 
   function handleSubmit(event) {
@@ -96,7 +124,7 @@ function FormCadastro() {
   }
 
   return (
-    <form id="formCadastro" onSubmit={handleSubmit}>
+    <form id="formCadastro" onSubmit={handleSubmit} style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
       <h1>Cadastro de Usuário</h1>
 
       <section>
@@ -111,7 +139,6 @@ function FormCadastro() {
           placeholder="Nome"
           required
         />
-
         <label htmlFor="sobrenome">Sobrenome:</label>
         <input
           type="text"
@@ -122,29 +149,26 @@ function FormCadastro() {
           placeholder="Sobrenome"
           required
         />
-
         <label htmlFor="dataNascimento">Data de Nascimento:</label>
         <input
           type="date"
           id="dataNascimento"
           name="dataNascimento"
           value={dataNascimento}
-          onChange={DataNascimento}
+          onChange={handleDataNascimento}
           required
         />
-
         <label htmlFor="cpf">CPF:</label>
         <input
           type="text"
           id="cpf"
           name="cpf"
           value={cpf}
-          onChange={CpfChange}
+          onChange={handleCpfChange}
           placeholder="XXX.XXX.XXX-XX"
           required
         />
         {!isCpfValido && <span style={{ color: "red" }}>CPF inválido</span>}
-
         <label htmlFor="telefoneFixo">Telefone Fixo:</label>
         <input
           type="tel"
@@ -155,7 +179,6 @@ function FormCadastro() {
           placeholder="(XX) XXXXX-XXXX"
           required
         />
-
         <label htmlFor="celular">Celular:</label>
         <input
           type="tel"
@@ -179,7 +202,6 @@ function FormCadastro() {
             value={nomePai}
             onChange={(e) => setNomePai(e.target.value)}
           />
-
           <label htmlFor="nomeMae">Nome da Mãe:</label>
           <input
             type="text"
@@ -203,17 +225,18 @@ function FormCadastro() {
           placeholder="XXXXX-XXX"
           required
         />
-
-        <label htmlFor="endereco">Endereço:</label>
+        <button type="button" onClick={buscarCep}>
+          Buscar CEP
+        </button>
+        <label htmlFor="logradouro">Logradouro:</label>
         <input
           type="text"
-          id="endereco"
-          name="endereco"
-          value={endereco}
-          onChange={(e) => setEndereco(e.target.value)}
+          id="logradouro"
+          name="logradouro"
+          value={logradouro}
+          onChange={(e) => setLogradouro(e.target.value)}
           required
         />
-
         <label htmlFor="numero">Número:</label>
         <input
           type="number"
@@ -223,7 +246,6 @@ function FormCadastro() {
           onChange={(e) => setNumero(e.target.value)}
           required
         />
-
         <label htmlFor="complemento">Complemento:</label>
         <input
           type="text"
@@ -232,7 +254,15 @@ function FormCadastro() {
           value={complemento}
           onChange={(e) => setComplemento(e.target.value)}
         />
-
+        <label htmlFor="bairro">Bairro:</label>
+        <input
+          type="text"
+          id="bairro"
+          name="bairro"
+          value={bairro}
+          onChange={(e) => setBairro(e.target.value)}
+          required
+        />
         <label htmlFor="cidade">Cidade:</label>
         <input
           type="text"
@@ -242,7 +272,6 @@ function FormCadastro() {
           onChange={(e) => setCidade(e.target.value)}
           required
         />
-
         <label htmlFor="estado">Estado:</label>
         <input
           type="text"
@@ -262,11 +291,10 @@ function FormCadastro() {
           id="email"
           name="email"
           value={email}
-          onChange={Email}
+          onChange={handleEmail}
           required
         />
         {!isEmailValido && <span style={{ color: "red" }}>Email inválido</span>}
-
         <label htmlFor="senha">Senha:</label>
         <input
           type="password"
@@ -279,14 +307,13 @@ function FormCadastro() {
         {!isSenhaValida && (
           <span style={{ color: "red" }}>A senha deve ter pelo menos 8 caracteres</span>
         )}
-
         <label htmlFor="confirmarSenha">Confirmar Senha:</label>
         <input
           type="password"
           id="confirmarSenha"
           name="confirmarSenha"
           value={confirmarSenha}
-          onChange={ConfirmarSenha}
+          onChange={handleConfirmarSenha}
           required
         />
         {!isSenhaConfirmada && (
